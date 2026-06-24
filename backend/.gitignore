@@ -2,3 +2,5 @@
 .env
 assets
 uploads
+*.pyc
+__pycache__

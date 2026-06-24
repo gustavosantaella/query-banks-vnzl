@@ -1,4 +1,5 @@
 
+from src.modules.query.services.bancamiga_service import BancamigaService
 from src.modules.query.services.bnc_service import BncService
 from src.modules.query.controllers.query_controller import QueryController
 from nest.core import Module
@@ -8,7 +9,8 @@ from nest.core import Module
     imports=[],
     controllers=[QueryController],
     providers=[
-        BncService
+        BncService,
+        BancamigaService
     ],
     exports=[]
 )
