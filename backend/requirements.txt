@@ -1,0 +1,4 @@
+pynest-api
+selenium
+pydantic
+python-dotenv
