@@ -1,4 +1,5 @@
 
+from selenium.webdriver.chrome.webdriver import WebDriver
 from time import sleep
 
 from src.config.app.selenium import get_chrome_driver
@@ -45,6 +46,9 @@ class BncService:
             amount = driver.find_element(By.XPATH, '//*[@id="FormContainer"]/div/div[2]/div/div/div/div[2]/div[1]/div/div').text
             
 
+            
+            
+
             return amount
         except Exception as e:
             print(f"Error to init Selenium: {str(e)}")
@@ -52,4 +56,17 @@ class BncService:
         
         finally:
             print("Quit selenium BNC")
+            self.logout(driver)
             driver.quit()
+
+    def logout(self, driver: WebDriver):
+        try:
+            driver.find_element(By.XPATH, '//*[@id="btn-logout"]').click()
+
+            sleep(1)
+
+            driver.find_element(By.ID, "Mdl-Confirm-Yes").click()
+            sleep(2)
+            print("Logout successfully :D")
+        except Exception as e:
+            print(f"Error to logout :c... {str(e)}")

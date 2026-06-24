@@ -12,6 +12,8 @@ class QueryController:
     @Get("/")
     def get_all_queries(self):
         balance = self.bnc_service.balance()
-        return Response(data=balance).to_dict()
+        return Response(data={
+            "BNC": balance,
+        }).to_dict()
 
         
