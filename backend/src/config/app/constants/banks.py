@@ -4,6 +4,13 @@ BANKS = [
     {
         "label": "Bancamiga",
         "code": "0172",
+        "config": [
+            {
+                "label": "Google Authenticator",
+                "key": "google-auth",
+                "required": True,
+            }
+        ],
         "callback": BancamigaService().login
     },
 

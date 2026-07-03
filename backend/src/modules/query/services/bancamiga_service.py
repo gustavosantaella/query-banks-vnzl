@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 @Injectable()
 class BancamigaService:
 
-    def login(self):
+    def login(self, config: dict = None):
         try:
             print("--- BANCAMIGA LOGIN START ---")
             print("Initializing Chrome Driver...")
@@ -38,9 +38,17 @@ class BancamigaService:
             next_login_step_button = driver.find_element(By.XPATH, '//*[@id="cmdLogin"]')
             next_login_step_button.click()
 
-            print("Awaiting Google Authenticator input...")
-            google_auth_code = input("Code Of Google Authenticator: ")
-            print(f"Entering Google Authenticator code: {google_auth_code}")
+            print("Checking for Google Authenticator code in config...")
+            google_auth_code = None
+            if config and "google-auth" in config:
+                google_auth_code = config["google-auth"]
+                print(f"Found Google Authenticator code in config: {google_auth_code}")
+                
+            if not google_auth_code:
+                print("Awaiting Google Authenticator input on console...")
+                google_auth_code = input("Code Of Google Authenticator: ")
+                print(f"Entering Google Authenticator code from console: {google_auth_code}")
+                
             google_auth_code_input = driver.find_element(By.ID, 'code')
             google_auth_code_input.send_keys(google_auth_code)
 

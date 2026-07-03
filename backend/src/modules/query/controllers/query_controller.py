@@ -14,12 +14,18 @@ class QueryController:
         self.bancamiga_service = bancamiga_service
 
     @Get("/")
-    def get_all_queries(self):
+    def get_all_queries(self, google_auth: str = None):
         results = {}
+        config = {}
+        if google_auth:
+            config["google-auth"] = google_auth
 
         def worker(bank):
             try:
-                results[bank["code"]] = bank["callback"]()
+                if bank["code"] == "0172":
+                    results[bank["code"]] = bank["callback"](config=config)
+                else:
+                    results[bank["code"]] = bank["callback"]()
             except Exception as e:
                 print(f"Error executing callback for {bank['label']}: {str(e)}")
                 results[bank["code"]] = None
@@ -46,16 +52,32 @@ class QueryController:
 
 
     @Get("/by-bank")
-    def query_by_bank(self, code: str):
+    def query_by_bank(self, code: str, google_auth: str = None):
         bank = next((bank for bank in BANKS if bank["code"] == code), None)
         if not bank:
             return Response(code=404, message="Bank not found").to_dict()
-        return Response(data=bank["callback"]()).to_dict()
+        
+        config = {}
+        if google_auth:
+            config["google-auth"] = google_auth
+            
+        try:
+            if code == "0172":
+                data = bank["callback"](config=config)
+            else:
+                data = bank["callback"]()
+            return Response(data=data).to_dict()
+        except Exception as e:
+            return Response(code=500, message=str(e)).to_dict()
 
 
     @Get("/banks")
     def banks(self):
-        return Response(data=BANKS).to_dict()
+        serialized_banks = []
+        for bank in BANKS:
+            b_copy = {k: v for k, v in bank.items() if k != "callback"}
+            serialized_banks.append(b_copy)
+        return Response(data=serialized_banks).to_dict()
     
 
         

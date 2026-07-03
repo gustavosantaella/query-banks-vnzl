@@ -1,5 +1,6 @@
 from sys import prefix
 from nest.core import PyNestFactory, Module
+from fastapi.middleware.cors import CORSMiddleware
 from src.modules.query.query_module import QueryModule
         
 
@@ -20,6 +21,14 @@ app = PyNestFactory.create(
 )
 
 http_server = app.get_server()
+
+http_server.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 http_server.root_path = "/api"
 
