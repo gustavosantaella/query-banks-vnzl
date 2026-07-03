@@ -1,4 +1,5 @@
 
+from src.config.app.constants.banks import BANKS
 from src.modules.query.services.bancamiga_service import BancamigaService
 from src.config.app.http.response import Response
 from nest.core import Get
@@ -25,5 +26,13 @@ class QueryController:
                 "amount": bancamiga_balance
             }
         }).to_dict()
+
+    @Get("/by-bank")
+    def query_by_bank(self, code: str):
+        bank = next((bank for bank in BANKS if bank["code"] == code), None)
+        if not bank:
+            return Response(code=404, message="Bank not found").to_dict()
+        return Response(data=bank["callback"]()).to_dict()
+    
 
         

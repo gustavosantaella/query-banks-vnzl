@@ -37,7 +37,13 @@ class BancamigaService:
             next_login_step_button = driver.find_element(By.ID, 'cmdLogin')
             next_login_step_button.click()
 
-            sleep(3)
+            dimiss_modal_alert = driver.find_elements(By.XPATH, "//*[@id='modalPWA']/div/div/div/div[1]/a")
+            if len(dimiss_modal_alert) > 0:
+                driver.execute_script("arguments[0].click()", dimiss_modal_alert[0])
+                
+            sleep(1)
+
+            self.balance(driver)
         except Exception as e:
             print(f"Error login method {str(e)}")
         finally:
@@ -45,7 +51,7 @@ class BancamigaService:
             if driver:
                 driver.quit()
     
-    def balance(self):
+    def balance(self, driver: webdriver.Chrome):  
         pass
     
     def logout(self, driver: webdriver.Chrome):
@@ -56,6 +62,7 @@ class BancamigaService:
             print("Logout successfully")
         except Exception as e:
             print("Error to logout Bancamiga...")
+            print(e)
             return e
         finally:
             driver.quit()
@@ -65,7 +72,9 @@ class BancamigaService:
         swal_element = driver.find_element(By.XPATH, "/html/body/div[6]/div/div[10]/button[1]")
         swal_element.click()
 
-    def swal_confirm(driver):
-        driver.execute_script("arguments[0].click()", driver.find_element(By.XPATH, '//*[@id="Mdl-Confirm-Yes"]'))
+    def swal_confirm(self, driver):
+        driver.execute_script("arguments[0].click()", driver.find_element(By.XPATH, '/html/body/div[7]/div/div[10]/button[1]'))
         sleep(3)
+
+    
         
