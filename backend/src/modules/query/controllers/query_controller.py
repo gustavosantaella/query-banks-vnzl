@@ -1,4 +1,5 @@
 
+import threading
 from src.config.app.constants.banks import BANKS
 from src.modules.query.services.bancamiga_service import BancamigaService
 from src.config.app.http.response import Response
@@ -14,18 +15,35 @@ class QueryController:
 
     @Get("/")
     def get_all_queries(self):
-        # bnc_balance = self.bnc_service.balance()
-        bancamiga_balance = self.bancamiga_service.login()
-        return Response(data={
-            "BNC": {
-                "img": "",
-                # "amount": bnc_balance
-            },
-            "BANCAMIGA": {
-                "img": "",
-                "amount": bancamiga_balance
-            }
-        }).to_dict()
+        results = {}
+
+        def worker(bank):
+            try:
+                results[bank["code"]] = bank["callback"]()
+            except Exception as e:
+                print(f"Error executing callback for {bank['label']}: {str(e)}")
+                results[bank["code"]] = None
+
+        threads: list[threading.Thread] = []
+
+        for bank in BANKS:
+            thread = threading.Thread(target=worker, args=(bank,))
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        response_data = []
+        for bank in BANKS:
+            response_data.append({
+                "label": bank["label"],
+                "code": bank["code"],
+                "data": results.get(bank["code"])
+            })
+
+        return Response(data=response_data).to_dict()
+
 
     @Get("/by-bank")
     def query_by_bank(self, code: str):
