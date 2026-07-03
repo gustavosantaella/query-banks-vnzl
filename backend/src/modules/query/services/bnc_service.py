@@ -52,6 +52,13 @@ class BncService:
             return amount
         except Exception as e:
             print(f"Error to init Selenium: {str(e)}")
+            try:
+                import os
+                screenshot_path = "bnc_login_error.png"
+                driver.save_screenshot(screenshot_path)
+                print(f"Saved debug screenshot to {os.path.abspath(screenshot_path)}")
+            except Exception as se:
+                print(f"Failed to save screenshot: {str(se)}")
             return e
         
         finally:

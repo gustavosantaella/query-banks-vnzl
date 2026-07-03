@@ -10,7 +10,7 @@ def get_chromium_options() -> Options:
     options = Options()
     
     # Modo headless configurable por variable de entorno o por defecto en True
-    headless = os.getenv("SELENIUM_HEADLESS", "False").lower() in ("true", "1", "yes")
+    headless = os.getenv("SELENIUM_HEADLESS", "False").lower() in ("true", "1", "yes", "True")
     if bool(headless):
         options.add_argument("--headless=new")  # Sintaxis moderna para headless en Selenium 4
         

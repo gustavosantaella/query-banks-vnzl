@@ -6,6 +6,8 @@ from os import getenv
 from src.config.app.selenium import get_chrome_driver
 from nest.core import Injectable
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 @Injectable()
 class BancamigaService:
@@ -23,7 +25,12 @@ class BancamigaService:
 
             DNI = getenv("DNI")
             print(f"Entering credentials (DNI: {DNI})...")
-            d = driver.find_element(By.ID, "documento")
+            
+            # Wait up to 60 seconds for Cloudflare Turnstile bypass / loading
+            print("Waiting for login form (#documento) to load...")
+            d = WebDriverWait(driver, 60).until(
+                EC.presence_of_element_located((By.ID, "documento"))
+            )
             u = driver.find_element(By.ID, "u")
             p = driver.find_element(By.ID, "p")
 
@@ -96,6 +103,13 @@ class BancamigaService:
             return result
         except Exception as e:
             print(f"Error login method: {str(e)}")
+            try:
+                import os
+                screenshot_path = "bancamiga_login_error.png"
+                driver.save_screenshot(screenshot_path)
+                print(f"Saved debug screenshot to {os.path.abspath(screenshot_path)}")
+            except Exception as se:
+                print(f"Failed to save screenshot: {str(se)}")
             return []
         finally:
             print("Cleaning up / Logging out...")
