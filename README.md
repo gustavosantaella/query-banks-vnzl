@@ -1,0 +1,1 @@
+[README.md](file;file:///c%3A/laragon/www/query-bank-vnzl/README.md) puedes generarme una documentacion completa y profesional sobre de que trata el proyecto, como ejecutarlo, que variables de entorno configurar, poner un descleimer que solo es para desarrolladores, que se use con responsabilidad y consiencia, etc, que explique estructura de carpetas y demas
