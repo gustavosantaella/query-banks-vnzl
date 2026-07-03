@@ -67,7 +67,7 @@ Crea un archivo `.env` en la raíz del directorio `backend/` con las siguientes 
 | `SELENIUM_WINDOW_POSITION` | Ubicación espacial (Coordenadas X, Y) del navegador | `3000,3000` |
 | `DNI` | Documento de Identidad del usuario (Cédula de Identidad) | `V12345678` |
 | `BNC_URL` | Portal oficial de login de Banco Nacional de Crédito | `https://personas.bncenlinea.com/` |
-| `BNC_CARD_NUMBER` | Número de tarjeta de débito BNC | `541036011272XXXX` |
+| `BNC_CARD_NUMBER` | Número de tarjeta de débito BNC | `12345678910XXXX` |
 | `BNC_PASS` | Contraseña de acceso a BNC en línea | `Contrasena123$` |
 | `BANCAMIGA_URL` | Portal oficial de login de Bancamiga | `https://online.bancamiga.com/?p=1` |
 | `BANCAMIGA_USER` | Nombre de usuario de Bancamiga | `mi_usuario` |
