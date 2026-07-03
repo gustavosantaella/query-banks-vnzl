@@ -114,12 +114,36 @@ export class App implements OnInit {
   });
 
   ngOnInit() {
+    this.loadCachedBanks();
     this.loadInitialBanks();
     this.connectWebSocket();
   }
 
   isCardLoading(code: string): boolean {
     return this.isSyncingAll() || this.loadingBanks().includes(code);
+  }
+
+  private loadCachedBanks() {
+    const cached = localStorage.getItem('cached_banks');
+    if (cached) {
+      try {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list) && list.length > 0) {
+          this.banks.set(list);
+          console.log('Successfully loaded cached banks from localStorage.');
+        }
+      } catch (e) {
+        console.warn('Could not parse cached banks from localStorage', e);
+      }
+    }
+  }
+
+  private saveToLocalStorage() {
+    try {
+      localStorage.setItem('cached_banks', JSON.stringify(this.banks()));
+    } catch (e) {
+      console.error('Could not save banks to localStorage', e);
+    }
   }
 
   private connectWebSocket() {
@@ -161,13 +185,20 @@ export class App implements OnInit {
     try {
       this.statusMessage.set('Conectando con el servidor...');
       const data = await this.bankService.getBanks();
-      const formatted: BankResponse[] = data.map((b: any) => ({
-        label: b.label,
-        code: b.code,
-        config: b.config,
-        data: null
-      }));
+      const cachedList = this.banks();
+      
+      const formatted: BankResponse[] = data.map((b: any) => {
+        const cachedBank = cachedList.find(x => x.code === b.code);
+        return {
+          label: b.label,
+          code: b.code,
+          config: b.config,
+          data: cachedBank ? cachedBank.data : null,
+          error: cachedBank ? cachedBank.error : undefined
+        };
+      });
       this.banks.set(formatted);
+      this.saveToLocalStorage();
       this.statusMessage.set('');
     } catch (e) {
       console.warn('Could not connect to backend, loading default local banks.', e);
@@ -176,17 +207,21 @@ export class App implements OnInit {
   }
 
   private fallbackBanks() {
-    this.banks.set([
-      { 
-        label: 'Bancamiga', 
-        code: '0172', 
-        config: [
-          { label: 'Google Authenticator', key: 'google-auth', required: true }
-        ],
-        data: null 
-      },
-      { label: 'Banco Nacional de Crédito', code: '0191', data: null }
-    ]);
+    const cachedList = this.banks();
+    if (cachedList.length === 0) {
+      this.banks.set([
+        { 
+          label: 'Bancamiga', 
+          code: '0172', 
+          config: [
+            { label: 'Google Authenticator', key: 'google-auth', required: true }
+          ],
+          data: null 
+        },
+        { label: 'Banco Nacional de Crédito', code: '0191', data: null }
+      ]);
+    }
+    this.saveToLocalStorage();
     this.statusMessage.set('');
   }
 
@@ -210,6 +245,7 @@ export class App implements OnInit {
         data: b.data,
         error: b.error || undefined
       })));
+      this.saveToLocalStorage();
       this.statusMessage.set('Cuentas actualizadas.');
     } catch (e: any) {
       this.statusMessage.set(`Error de conexión: ${e.message || e}`);
@@ -232,15 +268,19 @@ export class App implements OnInit {
 
     try {
       const data = await this.bankService.queryByBank(code, otp);
-      this.banks.update(current => 
-        current.map(b => b.code === code ? { ...b, data } : b)
-      );
+      this.banks.update(current => {
+        const updated = current.map(b => b.code === code ? { ...b, data, error: undefined } : b);
+        setTimeout(() => this.saveToLocalStorage(), 0);
+        return updated;
+      });
       this.statusMessage.set('Actualizado.');
     } catch (e: any) {
       const errMsg = e.message || 'Error de conexión';
-      this.banks.update(current => 
-        current.map(b => b.code === code ? { ...b, error: errMsg } : b)
-      );
+      this.banks.update(current => {
+        const updated = current.map(b => b.code === code ? { ...b, error: errMsg } : b);
+        setTimeout(() => this.saveToLocalStorage(), 0);
+        return updated;
+      });
       this.statusMessage.set(errMsg);
     } finally {
       this.loadingBanks.update(current => current.filter(c => c !== code));
