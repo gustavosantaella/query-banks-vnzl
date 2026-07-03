@@ -51,6 +51,11 @@ class QueryController:
         if not bank:
             return Response(code=404, message="Bank not found").to_dict()
         return Response(data=bank["callback"]()).to_dict()
+
+
+    @Get("/banks")
+    def banks(self):
+        return Response(data=BANKS).to_dict()
     
 
         
