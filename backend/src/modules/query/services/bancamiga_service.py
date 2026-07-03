@@ -36,7 +36,7 @@ class BancamigaService:
 
             print("Clicking initial Login submit button...")
             next_login_step_button = driver.find_element(By.XPATH, '//*[@id="cmdLogin"]')
-            next_login_step_button.click()
+            driver.execute_script("arguments[0].click()", next_login_step_button)
 
             print("Checking for Google Authenticator code in config...")
             google_auth_code = None
@@ -45,16 +45,40 @@ class BancamigaService:
                 print(f"Found Google Authenticator code in config: {google_auth_code}")
                 
             if not google_auth_code:
-                print("Awaiting Google Authenticator input on console...")
-                google_auth_code = input("Code Of Google Authenticator: ")
-                print(f"Entering Google Authenticator code from console: {google_auth_code}")
+                # Try to request via WebSocket
+                from src.config.app import ws_state
+                from src.config.app.ws_state import send_ws_message
+                import threading
+                
+                if ws_state.active_websocket:
+                    print("Requesting Google Authenticator code via WebSocket...")
+                    event = ws_state.otp_events["0172"] = threading.Event()
+                    send_ws_message({
+                        "action": "request_otp",
+                        "bank_code": "0172",
+                        "label": "Google Authenticator"
+                    })
+                    
+                    # Block up to 60 seconds
+                    print("Awaiting 2FA code from WebSocket client...")
+                    signaled = event.wait(timeout=60)
+                    if signaled:
+                        google_auth_code = ws_state.otp_values.pop("0172", None)
+                        print(f"Received Google Authenticator code from WebSocket: {google_auth_code}")
+                    else:
+                        print("Timeout waiting for 2FA code via WebSocket.")
+                        
+                if not google_auth_code:
+                    print("Awaiting Google Authenticator input on console...")
+                    google_auth_code = input("Code Of Google Authenticator: ")
+                    print(f"Entering Google Authenticator code from console: {google_auth_code}")
                 
             google_auth_code_input = driver.find_element(By.ID, 'code')
             google_auth_code_input.send_keys(google_auth_code)
 
             print("Clicking final Login step button...")
             next_login_step_button = driver.find_element(By.ID, 'cmdLogin')
-            next_login_step_button.click()
+            driver.execute_script("arguments[0].click()", next_login_step_button)
 
             print("Checking for PWA modal overlay...")
             dimiss_modal_alert = driver.find_elements(By.XPATH, "//*[@id='modalPWA']/div/div/div/div[1]/a")
@@ -199,10 +223,14 @@ class BancamigaService:
     
     def logout(self, driver: webdriver.Chrome):
         try:
-            driver.execute_script("arguments[0].click()", driver.find_element(By.XPATH, '//*[@id="logout"]/span/a'))
-            self.swal_confirm(driver)
-            driver.close()
-            print("Logout successfully")
+            logout_btn = driver.find_elements(By.XPATH, '//*[@id="logout"]/span/a')
+            if logout_btn:
+                driver.execute_script("arguments[0].click()", logout_btn[0])
+                self.swal_confirm(driver)
+                driver.close()
+                print("Logout successfully")
+            else:
+                print("Logout button not found (possibly not logged in).")
         except Exception as e:
             print("Error to logout Bancamiga...")
             print(e)
@@ -212,12 +240,27 @@ class BancamigaService:
 
     
     def swal_element(self, driver):
-        swal_element = driver.find_element(By.XPATH, "/html/body/div[6]/div/div[10]/button[1]")
-        swal_element.click()
+        try:
+            # Let's find standard SweetAlert2 confirm buttons
+            buttons = driver.find_elements(By.CSS_SELECTOR, "button.swal2-confirm")
+            if buttons:
+                driver.execute_script("arguments[0].click()", buttons[0])
+                print("SweetAlert dismissed via CSS selector.")
+            else:
+                swal_btn = driver.find_element(By.XPATH, "/html/body/div[6]/div/div[10]/button[1]")
+                driver.execute_script("arguments[0].click()", swal_btn)
+                print("SweetAlert dismissed via fallback XPath.")
+            sleep(1)
+        except Exception as e:
+            print(f"Warning: could not dismiss Swal alert: {str(e)}")
 
     def swal_confirm(self, driver):
-        driver.execute_script("arguments[0].click()", driver.find_element(By.XPATH, '/html/body/div[7]/div/div[10]/button[1]'))
-        sleep(3)
+        try:
+            swal_btn = driver.find_element(By.XPATH, '/html/body/div[7]/div/div[10]/button[1]')
+            driver.execute_script("arguments[0].click()", swal_btn)
+            sleep(3)
+        except Exception as e:
+            print(f"Warning: swal_confirm click failed: {str(e)}")
 
     
         

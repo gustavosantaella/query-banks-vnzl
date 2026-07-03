@@ -25,10 +25,13 @@ import { BankService, BankResponse } from './services/bank.service';
 })
 export class App implements OnInit {
   private readonly bankService = inject(BankService);
+  private socket?: WebSocket;
 
   // Signals for core state
   readonly banks = signal<BankResponse[]>([]);
-  readonly isLoading = signal<boolean>(false);
+  readonly isSyncingAll = signal<boolean>(false);
+  readonly loadingBanks = signal<string[]>([]);
+  readonly isLoadingAny = computed(() => this.isSyncingAll() || this.loadingBanks().length > 0);
   readonly statusMessage = signal<string>('');
   readonly searchQuery = signal<string>('');
 
@@ -112,6 +115,46 @@ export class App implements OnInit {
 
   ngOnInit() {
     this.loadInitialBanks();
+    this.connectWebSocket();
+  }
+
+  isCardLoading(code: string): boolean {
+    return this.isSyncingAll() || this.loadingBanks().includes(code);
+  }
+
+  private connectWebSocket() {
+    const wsUrl = 'ws://localhost:8000/api/ws/query';
+    console.log(`Connecting to WebSocket: ${wsUrl}`);
+    
+    this.socket = new WebSocket(wsUrl);
+
+    this.socket.onopen = () => {
+      console.log('WebSocket connected successfully.');
+    };
+
+    this.socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('WebSocket message received:', data);
+        
+        if (data.action === 'request_otp') {
+          this.pendingQuery.set(data.bank_code);
+          this.showOTPModal.set(true);
+          this.statusMessage.set(`Código 2FA requerido para ${data.label || 'Banco'}.`);
+        }
+      } catch (err) {
+        console.error('Error parsing WebSocket message:', err);
+      }
+    };
+
+    this.socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    this.socket.onclose = (event) => {
+      console.log('WebSocket connection closed. Reconnecting in 3s...', event.reason);
+      setTimeout(() => this.connectWebSocket(), 3000);
+    };
   }
 
   private async loadInitialBanks() {
@@ -148,17 +191,9 @@ export class App implements OnInit {
   }
 
   async runAllQueries(otp?: string) {
-    if (this.isLoading()) return;
+    if (this.isSyncingAll() || this.loadingBanks().length > 0) return;
     
-    // Check if any active bank in banks requires google-auth
-    const needsOTP = this.banks().some(b => b.config?.some(c => c.key === 'google-auth'));
-    if (needsOTP && !otp) {
-      this.pendingQuery.set('all');
-      this.showOTPModal.set(true);
-      return;
-    }
-
-    this.isLoading.set(true);
+    this.isSyncingAll.set(true);
     this.statusMessage.set('Sincronizando cuentas en paralelo. Por favor espera...');
     
     // Clear old errors
@@ -179,22 +214,15 @@ export class App implements OnInit {
     } catch (e: any) {
       this.statusMessage.set(`Error de conexión: ${e.message || e}`);
     } finally {
-      this.isLoading.set(false);
+      this.isSyncingAll.set(false);
     }
   }
 
   async runSingleQuery(code: string, otp?: string) {
-    if (this.isLoading()) return;
+    if (this.isSyncingAll() || this.loadingBanks().includes(code)) return;
     
+    this.loadingBanks.update(current => [...current, code]);
     const bank = this.banks().find(b => b.code === code);
-    const needsOTP = bank?.config?.some(c => c.key === 'google-auth');
-    if (needsOTP && !otp) {
-      this.pendingQuery.set(code);
-      this.showOTPModal.set(true);
-      return;
-    }
-
-    this.isLoading.set(true);
     const bankName = bank?.label || 'Banco';
     this.statusMessage.set(`Consultando ${bankName}...`);
     
@@ -215,24 +243,35 @@ export class App implements OnInit {
       );
       this.statusMessage.set(errMsg);
     } finally {
-      this.isLoading.set(false);
+      this.loadingBanks.update(current => current.filter(c => c !== code));
     }
   }
 
-  async confirmOTP() {
+  confirmOTP() {
     const code = this.otpCode().trim();
     if (!code) return;
     
     const target = this.pendingQuery();
-    this.showOTPModal.set(false);
     
-    if (target === 'all') {
-      await this.runAllQueries(code);
-    } else if (target) {
-      await this.runSingleQuery(target, code);
+    if (this.socket && this.socket.readyState === WebSocket.OPEN && target) {
+      console.log(`Submitting 2FA code '${code}' for bank '${target}' via WebSocket...`);
+      this.socket.send(JSON.stringify({
+        action: 'submit_otp',
+        bank_code: target,
+        code: code
+      }));
+      this.statusMessage.set('Código enviado, procesando consulta...');
+    } else {
+      console.warn('Socket not open, falling back to query initialization...');
+      if (target === 'all') {
+        this.runAllQueries(code);
+      } else if (target) {
+        this.runSingleQuery(target, code);
+      }
     }
     
     // Clean up
+    this.showOTPModal.set(false);
     this.otpCode.set('');
     this.pendingQuery.set(null);
   }

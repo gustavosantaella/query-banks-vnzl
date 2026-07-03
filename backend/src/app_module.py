@@ -33,4 +33,32 @@ http_server.add_middleware(
 http_server.root_path = "/api"
 
 
+import asyncio
+from fastapi import WebSocket, WebSocketDisconnect
+from src.config.app import ws_state
+
+@http_server.websocket("/api/ws/query")
+@http_server.websocket("/ws/query")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("WebSocket client connected.")
+    ws_state.active_websocket = websocket
+    ws_state.loop = asyncio.get_event_loop()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            print(f"Received WS data: {data}")
+            action = data.get("action")
+            if action == "submit_otp":
+                bank_code = data.get("bank_code")
+                code = data.get("code")
+                if bank_code:
+                    ws_state.otp_values[bank_code] = code
+                    if bank_code in ws_state.otp_events:
+                        ws_state.otp_events[bank_code].set()
+    except WebSocketDisconnect:
+        print("WebSocket client disconnected.")
+        ws_state.active_websocket = None
+
+
                 
