@@ -23,6 +23,9 @@ class BancamigaService:
             driver.get(url)
             driver.implicitly_wait(10)
 
+            # Check and attempt to bypass Cloudflare Turnstile if present
+            self.bypass_turnstile(driver)
+
             DNI = getenv("DNI")
             print(f"Entering credentials (DNI: {DNI})...")
             
@@ -275,6 +278,43 @@ class BancamigaService:
             sleep(3)
         except Exception as e:
             print(f"Warning: swal_confirm click failed: {str(e)}")
+
+    def bypass_turnstile(self, driver):
+        try:
+            # Check for Cloudflare Turnstile iframe
+            iframes = driver.find_elements(By.TAG_NAME, "iframe")
+            for iframe in iframes:
+                src = iframe.get_attribute("src") or ""
+                if "challenges.cloudflare.com" in src or "cloudflare-challenge" in src:
+                    print("Cloudflare Turnstile challenge detected. Switching context...")
+                    driver.switch_to.frame(iframe)
+                    sleep(2)
+                    
+                    # Try various common selectors for the checkbox inside Turnstile iframe
+                    checkbox = driver.find_elements(By.CSS_SELECTOR, "#challenge-stage input[type='checkbox']")
+                    if not checkbox:
+                        checkbox = driver.find_elements(By.CSS_SELECTOR, ".ctp-checkbox-label")
+                    if not checkbox:
+                        checkbox = driver.find_elements(By.CSS_SELECTOR, "span.mark")
+                    if not checkbox:
+                        checkbox = driver.find_elements(By.ID, "challenge-stage")
+                    
+                    if checkbox:
+                        print("Clicking Turnstile verification checkbox...")
+                        driver.execute_script("arguments[0].click()", checkbox[0])
+                        print("Turnstile checkbox clicked. Waiting for page reload...")
+                    else:
+                        print("Turnstile checkbox element not found inside iframe.")
+                    
+                    driver.switch_to.default_content()
+                    sleep(3)
+                    break
+        except Exception as e:
+            print(f"Error attempting Turnstile bypass: {str(e)}")
+            try:
+                driver.switch_to.default_content()
+            except:
+                pass
 
     
         
