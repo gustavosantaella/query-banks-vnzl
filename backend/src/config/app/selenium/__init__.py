@@ -20,13 +20,13 @@ def get_chromium_options() -> Options:
     options.add_argument("--disable-gpu")
     
     # Dynamic window size and position from .env (defaults to tiny, off-screen window for stealth headed mode)
-    width = os.getenv("SELENIUM_WINDOW_WIDTH", "10")
-    height = os.getenv("SELENIUM_WINDOW_HEIGHT", "10")
-    options.add_argument(f"--window-size={width},{height}")
+    # width = os.getenv("SELENIUM_WINDOW_WIDTH", "10")
+    # height = os.getenv("SELENIUM_WINDOW_HEIGHT", "10")
+    # options.add_argument(f"--window-size={width},{height}")
     
-    position = os.getenv("SELENIUM_WINDOW_POSITION", "3000,3000")
-    if position:
-        options.add_argument(f"--window-position={position}")
+    # position = os.getenv("SELENIUM_WINDOW_POSITION", "3000,3000")
+    # if position:
+    #     options.add_argument(f"--window-position={position}")
         
     options.add_argument("--disable-extensions")
     options.add_argument("--ignore-certificate-errors")

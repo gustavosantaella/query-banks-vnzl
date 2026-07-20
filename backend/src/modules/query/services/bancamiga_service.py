@@ -82,7 +82,7 @@ class BancamigaService:
                     print("Awaiting Google Authenticator input on console...")
                     google_auth_code = input("Code Of Google Authenticator: ")
                     print(f"Entering Google Authenticator code from console: {google_auth_code}")
-                
+            sleep(3)
             google_auth_code_input = driver.find_element(By.ID, 'code')
             google_auth_code_input.send_keys(google_auth_code)
 
