@@ -4,3 +4,4 @@ assets
 uploads
 *.pyc
 __pycache__
+*.png
