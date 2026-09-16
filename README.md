@@ -105,6 +105,69 @@ La aplicación web se compilará y se desplegará localmente en `http://localhos
 
 ---
 
+## 🖼️ Imagen base (solo el entorno del navegador) + capa de la app
+
+El `Dockerfile` está dividido en **2 etapas**:
+
+| Etapa | Contenido | Para qué |
+| :--- | :--- | :--- |
+| `browser` | Python 3.12 + Chromium + ChromeDriver + librerías y fuentes. **Nada de la app.** | Es la **imagen base** reutilizable; puede publicarse y usarse en otros proyectos |
+| `app` | Dependencias de Python + código del backend + arranque | Imagen final que se despliega (capa delgada sobre la base) |
+
+### Construir la base por separado
+
+```bash
+# Solo la imagen base (no incluye la app)
+docker build --target browser -t tuusuario/querybank-browser:1 .
+
+# La imagen final (base + app)
+docker build -t querybank-backend:1 .
+
+# Reutilizarla en otro proyecto:
+#   FROM tuusuario/querybank-browser:1
+```
+
+La etapa `browser` termina con una verificación (`chromium --version && chromedriver --version`),
+así que **si faltan librerías del sistema el build falla ahí** y no en producción (es la causa del
+error `Status code was: 127`).
+
+### Ejecutar sin meter el código en la imagen (desarrollo)
+
+`docker-compose.yml` construye **solo la base** y monta el código por volumen:
+
+```bash
+docker compose up -d          # la imagen aporta el navegador; la app llega por volumen
+docker compose logs -f backend
+```
+
+* El contenedor tiene Chromium funcional y el código se recarga al editarlo (`--reload`).
+* Nada de tu app queda dentro de la imagen.
+* Los servicios de `docker-compose.yml`:
+  * `backend` → la base (`target: browser`) + `./backend/src`, `main.py`, `requirements.txt` montados.
+  * `selenium` → **opcional** (perfil `remote`), navegador en contenedor aparte:
+    `docker compose --profile remote up -d` y en `backend/.env`
+    `SELENIUM_REMOTE_URL=http://localhost:4444` (el navegador se ve por VNC en
+    `http://localhost:7900`, contraseña `secret`).
+
+### En Railway
+
+No cambia nada: un solo servicio, Root Directory `/` y Dockerfile Path `Dockerfile`.
+Railway construye la etapa final; cuando solo cambia el código del backend, las capas del
+navegador quedan en caché y el rebuild tarda segundos.
+
+---
+
+## 🔌 Alternativa: el navegador en un servicio aparte (Railway, 2 servicios)
+
+Si prefieres que el navegador viva en su propio contenedor y la app no instale Chromium:
+
+1. Servicio nuevo → **Deploy from Docker Image** → `selenium/standalone-chromium:latest`.
+2. En el servicio del backend: `SELENIUM_REMOTE_URL=http://<servicio-selenium>.railway.internal:4444`.
+3. En ese caso puedes borrar el bloque `chromium`/`chromium-driver` del `Dockerfile` (la app ya no
+   lo necesita) y quedarte con una imagen mínima.
+
+---
+
 ## ⚠️ Descargo de Responsabilidad (Disclaimer)
 
 > [!WARNING]

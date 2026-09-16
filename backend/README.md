@@ -10,12 +10,13 @@ Copy `.env.example` to `.env` and adjust the values.
 
 | Variable | Default | Description |
 | --- | --- | --- |
+| `SELENIUM_REMOTE_URL` | - | URL of a remote browser (Selenium Grid / `selenium/standalone-chromium` container). If set, no local Chromium/ChromeDriver is needed. |
 | `SELENIUM_HEADLESS` | `False` | `True` runs the browser in the background (no visible window). Also accepts `1`, `yes`, `on`, `si`. |
 | `SELENIUM_WINDOW_WIDTH` | `1920` | Window/viewport width. In headless mode it defines the real viewport, and the bank's DOM is responsive. |
 | `SELENIUM_WINDOW_HEIGHT` | `1080` | Window/viewport height. |
 | `SELENIUM_WINDOW_POSITION` | - | `x,y` window position (visible mode only). |
-| `CHROMIUM_BINARY_PATH` | - | Custom Chrome/Chromium binary path. |
-| `CHROME_DRIVER_PATH` | - | Custom chromedriver path. |
+| `CHROMIUM_BINARY_PATH` | - | Custom Chrome/Chromium binary path (local browser mode). |
+| `CHROME_DRIVER_PATH` | - | Custom chromedriver path (local browser mode). |
 
 ### Banks
 
