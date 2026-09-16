@@ -1,0 +1,34 @@
+# ============================================================================
+#  Archivos que NO se envían al contexto de build (imagen más liviana y sin
+#  secretos). El contexto es la raíz del repositorio.
+# ============================================================================
+
+# Secretos y artefactos locales del backend
+backend/.env
+backend/*.png
+
+# Entornos virtuales y cachés de Python
+**/.venv/
+**/venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
+**/.mypy_cache/
+
+# Datos de referencia usados solo durante el desarrollo (no se usan en runtime)
+backend/html_templates/
+
+# Frontend Angular (tiene su propio despliegue, no forma parte de esta imagen)
+portal/node_modules/
+portal/.angular/
+portal/dist/
+portal/coverage/
+
+# Metadatos de control de versiones e IDE
+.git/
+.gitignore
+**/.vscode/
+**/.idea/
+**/.DS_Store
+**/Thumbs.db

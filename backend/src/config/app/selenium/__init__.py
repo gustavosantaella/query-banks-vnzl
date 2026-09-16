@@ -114,6 +114,35 @@ def get_chrome_major_version() -> int:
             return int(value.split(".")[0])
         except Exception:
             pass
+
+    # Linux (contenedor Docker) / macOS: se deduce del propio binario del navegador
+    try:
+        import re
+        import subprocess
+
+        candidates = [
+            os.getenv("CHROMIUM_BINARY_PATH"),
+            "chromium",
+            "chromium-browser",
+            "google-chrome",
+            "google-chrome-stable",
+            "chrome",
+        ]
+        for candidate in candidates:
+            if not candidate:
+                continue
+            try:
+                completed = subprocess.run(
+                    [candidate, "--version"], capture_output=True, text=True, timeout=5
+                )
+            except Exception:
+                continue
+            match = re.search(r"(\d+)\.", completed.stdout or "")
+            if match:
+                return int(match.group(1))
+    except Exception:
+        pass
+
     return 149  # Fallback to the user's current version
 
 

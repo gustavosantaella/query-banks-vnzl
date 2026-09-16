@@ -105,6 +105,76 @@ La aplicación web se compilará y se desplegará localmente en `http://localhos
 
 ---
 
+## 🚢 Despliegue del Backend en Railway
+
+El backend se despliega como contenedor Docker. En la raíz del repositorio están:
+
+```text
+query-bank-vnzl/
+├── Dockerfile        # Imagen del backend (Python 3.12 + Chromium + ChromeDriver)
+├── railway.json      # Configuración de build/deploy para Railway
+└── .dockerignore     # Excluye .venv, .env, html_templates y el portal del contexto
+```
+
+### 1. Crear el servicio
+
+1. En Railway: **New Project → Deploy from GitHub repo** y selecciona este repositorio.
+2. Railway detecta `railway.json` y construye con el `Dockerfile`.
+3. Asegúrate de que:
+   * **Root Directory**: vacío / `/` (el `Dockerfile` está en la raíz).
+   * **Dockerfile Path**: `Dockerfile`.
+   * **Healthcheck Path**: `/api/query/banks` (ya viene en `railway.json`).
+
+> El prefijo `/api` funciona tanto en `/api/query/...` como en `/query/...`
+> (`app_module.py` define `root_path = "/api"`), igual que el WebSocket en
+> `/api/ws/query`.
+
+### 2. Variables de entorno (Railway → Variables)
+
+El contenedor no tiene terminal interactiva, por lo que **no** se puede usar el
+respaldo por consola: todas las credenciales deben estar definidas como variables.
+
+| Variable | Valor sugerido | Notas |
+| :--- | :--- | :--- |
+| `SELENIUM_HEADLESS` | `True` | Ya viene `True` en la imagen (no hay pantalla en la nube) |
+| `SELENIUM_WINDOW_WIDTH` | `1920` | El DOM de los bancos es responsive |
+| `SELENIUM_WINDOW_HEIGHT` | `1080` | |
+| `DNI` | `V12345678` | |
+| `BNC_URL` | `https://personas.bncenlinea.com/` | |
+| `BNC_CARD_NUMBER` | `0000000000000000` | |
+| `BNC_PASS` | `********` | |
+| `BANCAMIGA_URL` | `https://online.bancamiga.com/?p=1` | |
+| `BANCAMIGA_USER` | `usuario` | |
+| `BANCAMIGA_PASS` | `********` | |
+
+`PORT` lo inyecta Railway automáticamente; la imagen ya lo usa en el arranque
+(`uvicorn ... --port ${PORT:-8000}`).
+
+### 3. Recomendaciones de recursos
+
+* **Memoria**: reserva al menos **1 GB**. Cada consulta abre una instancia de Chromium
+  (~300–500 MB) y las consultas de los distintos bancos corren en paralelo.
+* **Réplicas**: mantener **1 réplica** mientras se use la validación 2FA por WebSocket:
+  el estado del OTP vive en memoria del proceso (`src/config/app/ws_state.py`), así que
+  varias instancias no podrían intercambiar el código.
+* **Cloudflare Turnstile / anti-bot**: en headless es más probable recibir retos. Si
+  esto ocurre, se puede alternar `SELENIUM_HEADLESS=False` (la imagen soporta ambos
+  modos) o aumentar la memoria de la instancia.
+* **`.env`**: nunca se copia a la imagen (ver `.dockerignore` y `Dockerfile`); los
+  secretos deben vivir únicamente en las variables de Railway.
+
+### 4. Conectar el Portal Angular
+
+El frontend tiene la URL del backend fija en dos lugares; cámbialos por el dominio
+que Railway asigne a tu servicio:
+
+| Archivo | Constante |
+| :--- | :--- |
+| `portal/src/app/services/bank.service.ts` | `API_BASE = 'https://<tu-servicio>.up.railway.app/api/query'` |
+| `portal/src/app/app.ts` | `const wsUrl = 'wss://<tu-servicio>.up.railway.app/api/ws/query'` |
+
+---
+
 ## ⚠️ Descargo de Responsabilidad (Disclaimer)
 
 > [!WARNING]
