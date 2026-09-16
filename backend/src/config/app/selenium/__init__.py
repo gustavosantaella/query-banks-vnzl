@@ -48,15 +48,6 @@ def is_headless() -> bool:
     return env_flag("SELENIUM_HEADLESS", default=False)
 
 
-def get_remote_url() -> str:
-    """
-    URL de un navegador remoto (Selenium Grid / contenedor 'selenium/standalone-chromium').
-    Si está definida, la app NO necesita Chromium ni ChromeDriver instalados localmente.
-    Ej: SELENIUM_REMOTE_URL=http://localhost:4444
-    """
-    return (os.getenv("SELENIUM_REMOTE_URL") or "").strip()
-
-
 def get_window_size() -> tuple:
     """Tamaño de la ventana configurable (SELENIUM_WINDOW_WIDTH x SELENIUM_WINDOW_HEIGHT)."""
     return (
@@ -88,17 +79,11 @@ def validate_binaries() -> list:
     return warnings
 
 
-def get_chromium_options(remote: bool = False) -> Options:
+def get_chromium_options() -> Options:
     """
     Configura y retorna las opciones para Chromium / Google Chrome en Selenium.
 
-    Parámetro:
-      - remote=True: las opciones se enviarán a un navegador remoto (Selenium Grid /
-        contenedor), por lo que NO se fija binary_location (el binario vive allá).
-
     Variables de entorno soportadas:
-      - SELENIUM_REMOTE_URL: URL de un navegador remoto (ej: http://localhost:4444).
-                             Si está definida, se ignora el Chrome/ChromeDriver local.
       - SELENIUM_HEADLESS: "True" ejecuta el navegador en segundo plano (sin verse).
                            Por defecto "False" (ventana visible).
       - SELENIUM_WINDOW_WIDTH / SELENIUM_WINDOW_HEIGHT: tamaño de la ventana
@@ -143,11 +128,9 @@ def get_chromium_options(remote: bool = False) -> Options:
     options.add_experimental_option("useAutomationExtension", False)
 
     # Ruta personalizada para el binario de Chromium si está definida en el archivo .env
-    # (se omite en modo remoto: el binario vive en el contenedor del navegador)
-    if not remote:
-        chromium_binary = os.getenv("CHROMIUM_BINARY_PATH")
-        if chromium_binary:
-            options.binary_location = chromium_binary
+    chromium_binary = os.getenv("CHROMIUM_BINARY_PATH")
+    if chromium_binary:
+        options.binary_location = chromium_binary
 
     return options
 
@@ -168,7 +151,7 @@ def get_chrome_major_version() -> int:
         except Exception:
             pass
 
-    # Linux (contenedor Docker) / macOS: se deduce del propio binario del navegador
+    # Linux / macOS: se deduce del propio binario del navegador
     try:
         import re
         import subprocess
@@ -199,59 +182,14 @@ def get_chrome_major_version() -> int:
     return 149  # Fallback to the user's current version
 
 
-def _get_remote_driver(remote_url: str) -> webdriver.Remote:
-    """
-    Se conecta a un navegador que corre en otro contenedor/servidor.
-
-    Uso típico: 'docker compose up -d' levanta 'selenium/standalone-chromium'
-    (solo el navegador) y la app se conecta con:
-        SELENIUM_REMOTE_URL=http://localhost:4444
-    Con esto el contenedor de la app NO necesita Chromium ni ChromeDriver.
-    """
-    print(f"Selenium: usando navegador remoto en {remote_url} (no se usa Chrome local).")
-    options = get_chromium_options(remote=True)
-
-    try:
-        driver = webdriver.Remote(command_executor=remote_url, options=options)
-    except Exception as exc:
-        message = (
-            f"No se pudo conectar al navegador remoto en {remote_url}: {exc} "
-            "(verifique que el contenedor del navegador esté en ejecución y que la URL sea accesible)."
-        )
-        print(message)
-        return Exception(message)
-
-    try:
-        # Remueve el flag navigator.webdriver (evita detección básica)
-        driver.execute_cdp_cmd(
-            "Page.addScriptToEvaluateOnNewDocument",
-            {
-                "source": "const newProto = navigator.__proto__; delete newProto.webdriver; navigator.__proto__ = newProto;"
-            }
-        )
-    except Exception as exc:
-        print(f"Aviso: no se pudo aplicar el ajuste stealth en el navegador remoto: {exc}")
-
-    return driver
-
-
 def get_chrome_driver() -> webdriver.Chrome:
     """
-    Inicializa y retorna la instancia del webdriver de Chrome/Chromium.
+    Inicializa y retorna la instancia del webdriver de Chrome/Chromium
+    con las configuraciones aplicadas.
 
-    Modos de funcionamiento:
-      1. SELENIUM_REMOTE_URL definido  -> se conecta a un navegador remoto
-         (Selenium Grid / contenedor 'selenium/standalone-chromium'). No requiere
-         Chromium ni ChromeDriver instalados en esta máquina.
-      2. undetected_chromedriver disponible -> navegador local stealth.
-      3. Fallback -> webdriver.Chrome local (CHROMIUM_BINARY_PATH / CHROME_DRIVER_PATH).
-
-    El navegador se ejecuta oculto o visible según SELENIUM_HEADLESS.
+    El navegador se ejecuta oculto o visible según SELENIUM_HEADLESS
+    (ver get_chromium_options).
     """
-    remote_url = get_remote_url()
-    if remote_url:
-        return _get_remote_driver(remote_url)
-
     options = get_chromium_options()
     headless = is_headless()
     validate_binaries()
