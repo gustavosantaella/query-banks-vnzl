@@ -5,3 +5,4 @@ uploads
 *.pyc
 __pycache__
 *.png
+html_templates

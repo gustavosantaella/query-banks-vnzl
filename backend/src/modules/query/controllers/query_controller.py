@@ -52,7 +52,7 @@ class QueryController:
 
 
     @Get("/by-bank")
-    def query_by_bank(self, code: str, google_auth: str = None):
+    def query_by_bank(self, code: str, google_auth: str = None, card_number: str = None, dni: str = None, password: str = None):
         bank = next((bank for bank in BANKS if bank["code"] == code), None)
         if not bank:
             return Response(code=404, message="Bank not found").to_dict()
@@ -60,10 +60,19 @@ class QueryController:
         config = {}
         if google_auth:
             config["google-auth"] = google_auth
+        # Credenciales opcionales para BNC (si no se envían se leen del .env o por consola)
+        if card_number:
+            config["BNC_CARD_NUMBER"] = card_number
+        if dni:
+            config["DNI"] = dni
+        if password:
+            config["BNC_PASS"] = password
             
         try:
             if code == "0172":
                 data = bank["callback"](config=config)
+            elif code == "0191":
+                data = bank["callback"](config=config or None)
             else:
                 data = bank["callback"]()
             return Response(data=data).to_dict()
